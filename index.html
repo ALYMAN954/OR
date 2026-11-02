@@ -1,0 +1,574 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>شاشة حالة العمليات</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600&family=Readex+Pro:wght@400;600;700&display=swap">
+<style>
+/* التصميم: شاشة عرض داكنة دائماً بخط أرقام ضخم يُقرأ من بعيد؛ لوحة المشرف قائمة بطاقات بأزرار كبيرة للإبهام، وتتبع سمة الجهاز */
+:root{
+  --f-display:"Readex Pro","IBM Plex Sans Arabic",system-ui,"Segoe UI",Tahoma,sans-serif;
+  --f-body:"IBM Plex Sans Arabic",system-ui,"Segoe UI",Tahoma,sans-serif;
+  --bg:#edf2f4; --surface:#ffffff; --surface-2:#e3eaed; --fg:#13262c; --muted:#566b73; --line:#cfdadf;
+  --accent:#0b6b70; --accent-fg:#ffffff; --danger:#b3261e;
+  --st-wait:#a85f00; --st-prep:#1b5fc2; --st-op:#c23b2a; --st-rec:#7343c9; --st-done:#17803f;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0c181d; --surface:#142329; --surface-2:#1c3038; --fg:#e8f1f3; --muted:#92abb3; --line:#27404a;
+    --accent:#45c7c2; --accent-fg:#052224; --danger:#ff8a80;
+    --st-wait:#f2b756; --st-prep:#78afff; --st-op:#ff8573; --st-rec:#bca0ff; --st-done:#5cd694;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0c181d; --surface:#142329; --surface-2:#1c3038; --fg:#e8f1f3; --muted:#92abb3; --line:#27404a;
+  --accent:#45c7c2; --accent-fg:#052224; --danger:#ff8a80;
+  --st-wait:#f2b756; --st-prep:#78afff; --st-op:#ff8573; --st-rec:#bca0ff; --st-done:#5cd694;
+  color-scheme:dark;
+}
+html.on-display.on-display{
+  --bg:#0c181d; --surface:#142329; --surface-2:#1c3038; --fg:#e8f1f3; --muted:#92abb3; --line:#27404a;
+  --accent:#45c7c2; --accent-fg:#052224; --danger:#ff8a80;
+  --st-wait:#f2b756; --st-prep:#78afff; --st-op:#ff8573; --st-rec:#bca0ff; --st-done:#5cd694;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);line-height:1.5}
+#app{min-height:100%;padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+html.on-display #app{height:100%;overflow:hidden}
+h1,h2{font-family:var(--f-display);margin:0;text-wrap:balance}
+button,input,select{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.st-wait{--st:var(--st-wait)} .st-prep{--st:var(--st-prep)} .st-op{--st:var(--st-op)} .st-rec{--st:var(--st-rec)} .st-done{--st:var(--st-done)}
+.dot{width:.7em;height:.7em;border-radius:50%;background:var(--st,var(--muted));display:inline-block;flex:none}
+
+/* الرئيسية */
+.home{max-width:640px;margin:0 auto;display:grid;gap:20px;padding-top:8vh}
+.home h1{font-size:clamp(1.8rem,6vw,2.6rem);line-height:1.2}
+.home p{margin:0;color:var(--muted);max-width:52ch}
+.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr));gap:12px}
+.tile{display:grid;gap:4px;padding:18px;border:1px solid var(--line);border-radius:14px;background:var(--surface);color:var(--fg);text-decoration:none;min-width:0}
+.tile strong{font:600 1.2rem var(--f-display)}
+.tile span{color:var(--muted);font-size:.92rem}
+.tile:hover{border-color:var(--accent)}
+
+/* شاشة العرض */
+#display{height:100%;display:flex;flex-direction:column;gap:0;min-width:0}
+.d-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;padding-bottom:12px;border-bottom:1px solid var(--line)}
+.d-head h1{font-size:clamp(1.6rem,3.2vw,3.2rem);line-height:1.1}
+.d-head p{margin:.4em 0 0;color:var(--muted);font-size:clamp(.95rem,1.5vw,1.5rem)}
+.d-clock{text-align:end}
+#dTime{font:600 clamp(1.8rem,3.4vw,3.4rem)/1 var(--f-display);font-variant-numeric:tabular-nums}
+#dDate{color:var(--muted);font-size:clamp(.9rem,1.4vw,1.4rem)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 22px;padding:12px 0;color:var(--muted);font-size:clamp(.85rem,1.3vw,1.3rem)}
+.legend span{display:inline-flex;align-items:center;gap:.5em}
+.board{flex:1;min-height:0;overflow:hidden;display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,20rem),1fr));gap:14px;align-content:start}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px 18px 18px;display:flex;flex-direction:column;gap:6px;min-width:0;outline:3px solid transparent;outline-offset:2px}
+.card.flash{animation:flash 1.5s ease-in-out 3}
+@keyframes flash{0%,100%{outline-color:transparent}30%,70%{outline-color:var(--st)}}
+.card.st-op{border-color:var(--st)}
+.card.st-done{opacity:.62}
+.c-top{display:flex;justify-content:space-between;align-items:center;gap:8px;color:var(--muted);font-size:clamp(.8rem,1.1vw,1.1rem)}
+.room{background:var(--surface-2);color:var(--fg);padding:.1em .75em;border-radius:99px;white-space:nowrap}
+.c-num{font:700 clamp(3rem,5vw,5.6rem)/1.05 var(--f-display);font-variant-numeric:tabular-nums;letter-spacing:.02em;overflow-wrap:anywhere}
+.c-doc{font-size:clamp(1.1rem,1.7vw,1.7rem);font-weight:600;overflow-wrap:anywhere}
+.c-doc small{display:block;color:var(--muted);font-weight:400;font-size:.62em}
+.c-status{display:flex;align-items:center;gap:.5em;font-size:clamp(1.05rem,1.6vw,1.6rem);font-weight:600;color:var(--st);margin-top:4px}
+.steps{display:grid;grid-template-columns:repeat(5,1fr);gap:4px;margin-top:8px}
+.steps i{height:6px;border-radius:3px;background:var(--surface-2)}
+.steps i.on{background:var(--st)}
+.empty{grid-column:1/-1;display:grid;gap:6px;justify-items:center;text-align:center;padding:12vh 16px;color:var(--muted)}
+.empty strong{font:600 clamp(1.3rem,2.4vw,2.4rem) var(--f-display);color:var(--fg)}
+.empty span{font-size:clamp(.95rem,1.5vw,1.5rem)}
+.d-foot{display:flex;align-items:center;gap:6px 18px;flex-wrap:wrap;padding-top:10px;border-top:1px solid var(--line);color:var(--muted);font-size:clamp(.85rem,1.3vw,1.3rem)}
+#dNotice{color:var(--fg);flex:1 1 14rem;min-width:0;font-weight:500}
+.conn{display:inline-flex;align-items:center;gap:.5em;white-space:nowrap}
+.conn.ok{--st:var(--st-done)} .conn.warn{--st:var(--st-wait)} .conn.bad{--st:var(--st-op)}
+.tools{display:flex;gap:6px;opacity:.4}
+.tools:hover,.tools:focus-within{opacity:1}
+.tools button,.tools a{min-height:34px;padding:0 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--fg);cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;font-size:.85rem}
+
+/* لوحة المشرف */
+.ctl{max-width:640px;margin:0 auto;display:grid;gap:16px}
+.c-head{display:flex;justify-content:space-between;align-items:center;gap:8px 12px;flex-wrap:wrap}
+.c-head h1{font-size:1.4rem}
+.c-head nav{display:flex;gap:8px;flex-wrap:wrap}
+.lnk{min-height:40px;padding:0 14px;border:1px solid var(--line);border-radius:10px;background:var(--surface);color:var(--fg);text-decoration:none;display:inline-flex;align-items:center;font-size:.92rem}
+.lnk.main{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);font-weight:600}
+.notice{padding:12px 14px;border-radius:10px;background:var(--surface-2);border:1px solid var(--line);font-size:.92rem}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;display:grid;gap:12px}
+.panel h2{font-size:1.05rem}
+.panel fieldset{border:0;margin:0;padding:0;min-width:0;display:grid;gap:12px}
+.panel details summary{cursor:pointer;font:600 1.05rem var(--f-display);min-height:32px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid2>*{min-width:0}
+label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px}
+input,select{width:100%;min-height:48px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);font-size:16px}
+.hint{margin:0;color:var(--muted);font-size:.82rem}
+.err{margin:0;color:var(--danger);font-size:.88rem;min-height:0}
+.err:empty{display:none}
+.btn{min-height:48px;padding:0 16px;border:1px solid var(--line);border-radius:10px;background:var(--surface-2);cursor:pointer;font-weight:500;min-width:0}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-fg);font-weight:600}
+.btn.danger{color:var(--danger);border-color:var(--danger);background:transparent}
+.btn.danger.armed{background:var(--danger);color:var(--bg);font-weight:600}
+.btn:disabled{opacity:.5;cursor:default}
+.list-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.list-head h2{font-size:1.05rem}
+.list-head h2 span{color:var(--muted);font-weight:400}
+#list{display:grid;gap:12px}
+.case{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px;display:grid;gap:12px}
+.case.st-done{opacity:.8}
+.case-main{display:flex;flex-wrap:wrap;align-items:center;gap:8px 14px}
+.case-num{font:700 1.9rem/1 var(--f-display);font-variant-numeric:tabular-nums}
+.case-meta{flex:1 1 7rem;min-width:0}
+.case-doc{font-weight:600;overflow-wrap:anywhere}
+.case-sub{color:var(--muted);font-size:.85rem}
+.pill{display:inline-flex;align-items:center;gap:.5em;padding:4px 12px;border-radius:99px;color:var(--st);font-size:.88rem;font-weight:600;background:var(--surface-2);background:color-mix(in srgb,var(--st) 16%,transparent)}
+.case-actions{display:flex;flex-wrap:wrap;gap:8px}
+.case-actions .primary{flex:1 1 12rem}
+.more{display:grid;gap:12px;padding-top:12px;border-top:1px solid var(--line)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{min-height:42px;padding:0 14px;border-radius:99px;border:1px solid var(--line);background:var(--surface-2);cursor:pointer}
+.chip[aria-pressed="true"]{border-color:var(--st);color:var(--st);font-weight:600}
+.state{padding:28px 16px;text-align:center;color:var(--muted);border:1px dashed var(--line);border-radius:14px}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom,0px));max-width:min(92vw,28rem);padding:10px 16px;border-radius:10px;background:var(--fg);color:var(--bg);font-size:.92rem;z-index:20;text-align:center}
+#toast.bad{background:var(--danger)}
+@media (prefers-reduced-motion:reduce){.card.flash{animation:none;outline-color:var(--st)}}
+</style>
+
+<div id="app" dir="rtl" lang="ar">
+
+  <section id="home" class="home" hidden>
+    <h1>شاشة حالة العمليات</h1>
+    <p>يتابع أهل المريض حالته على الشاشة عند باب العمليات برقمه فقط، ويحدّثها مشرف الوردية من جواله.</p>
+    <div class="tiles">
+      <a class="tile" href="#display"><strong>شاشة العرض</strong><span>افتحها على الشاشة المعلّقة عند باب العمليات</span></a>
+      <a class="tile" href="#control" dir="ltr" lang="en"><strong>Supervisor panel</strong><span>Enter cases and update them from your phone</span></a>
+    </div>
+  </section>
+
+  <section id="display" hidden>
+    <header class="d-head">
+      <div><h1 id="dTitle">العمليات الجراحية</h1><p>ابحثوا عن رقم المريض لمعرفة حالته</p></div>
+      <div class="d-clock"><div id="dTime"></div><div id="dDate"></div></div>
+    </header>
+    <div class="legend" id="dLegend"></div>
+    <div class="board" id="board"></div>
+    <footer class="d-foot">
+      <div id="dNotice"></div>
+      <span id="dPager"></span>
+      <span class="conn" id="dConn"></span>
+      <div class="tools">
+        <button type="button" id="fsBtn">ملء الشاشة</button>
+        <a href="#home" data-home>القائمة</a>
+      </div>
+    </footer>
+  </section>
+
+  <section id="control" class="ctl" dir="ltr" lang="en" hidden>
+    <header class="c-head">
+      <h1>Supervisor panel</h1>
+      <nav>
+        <span class="conn" id="cConn"></span>
+        <a class="lnk main" href="#display">Display screen</a>
+        <a class="lnk" href="#home" data-home>Menu</a>
+      </nav>
+    </header>
+    <div class="notice" id="ctlNotice" hidden></div>
+
+    <form class="panel" id="addForm" novalidate>
+      <fieldset id="addSet">
+        <h2>Add a case</h2>
+        <div class="grid2">
+          <div><label for="fNum">Patient number</label><input id="fNum" inputmode="numeric" autocomplete="off" maxlength="12" enterkeyhint="next"></div>
+          <div><label for="fRoom">Operating room (optional)</label><input id="fRoom" autocomplete="off" maxlength="8" enterkeyhint="next"></div>
+        </div>
+        <div><label for="fDoc">Doctor name</label><input id="fDoc" dir="auto" list="docList" autocomplete="off" maxlength="60" enterkeyhint="done"><datalist id="docList"></datalist></div>
+        <div><label for="fStatus">Status</label><select id="fStatus"></select></div>
+        <p class="hint">The screen shows patient numbers only. Do not enter patient names.</p>
+        <p class="err" id="fErr" role="alert"></p>
+        <button class="btn primary" type="submit" id="addBtn">Add to screen</button>
+      </fieldset>
+    </form>
+
+    <div class="list-head">
+      <h2>Current cases <span id="cnt"></span></h2>
+      <button type="button" class="btn danger" id="clearDone" hidden>Clear completed</button>
+    </div>
+    <div id="list"><div class="state">Loading…</div></div>
+
+    <form class="panel" id="setForm" novalidate>
+      <details>
+        <summary>Screen settings</summary>
+        <fieldset id="setSet" style="margin-top:12px">
+          <div><label for="sTitle">Screen title (shown in Arabic on the display)</label><input id="sTitle" dir="auto" maxlength="60" autocomplete="off"></div>
+          <div><label for="sNote">Message at the bottom of the screen (optional)</label><input id="sNote" dir="auto" maxlength="160" autocomplete="off"></div>
+          <button class="btn primary" type="submit">Save settings</button>
+        </fieldset>
+      </details>
+    </form>
+  </section>
+
+  <div id="toast" dir="auto" role="status" aria-live="polite" hidden></div>
+</div>
+
+<script>
+(function(){
+  var STATUS=[
+    {k:'wait',label:'بانتظار الدخول',short:'انتظار',en:'Waiting to enter',enShort:'Waiting'},
+    {k:'prep',label:'التحضير للعملية',short:'تحضير',en:'Pre-op preparation',enShort:'Prep'},
+    {k:'op',label:'داخل غرفة العمليات',short:'العملية',en:'In the operating room',enShort:'In surgery'},
+    {k:'rec',label:'في غرفة الإفاقة',short:'الإفاقة',en:'In recovery',enShort:'Recovery'},
+    {k:'done',label:'اكتملت العملية',short:'اكتملت',en:'Surgery completed',enShort:'Done'}
+  ];
+  var SK={};STATUS.forEach(function(s,i){SK[s.k]=i;});
+  var DEF={title:'العمليات الجراحية',note:'',doctors:[]};
+  var DONE_MS=90*60000;
+  function $(id){return document.getElementById(id);}
+  function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function sleep(ms){return new Promise(function(r){setTimeout(r,ms);});}
+
+  var db=null,canEdit=null,cases=[],settings={title:DEF.title,note:'',doctors:[]};
+  var conn='load',loaded=false,view='home',loadTimer=null;
+  var openId=null,confirmKey=null,confirmTimer=null,pendingRender=false;
+  var busy={},seen={},flashUntil={},primed=false,lock=null,toastTimer=null,adding=false;
+
+  function norm(d){
+    var x=d.data()||{};
+    return {id:d.id,num:String(x.num==null?'':x.num).slice(0,12),doctor:String(x.doctor==null?'':x.doctor).slice(0,60),
+      room:String(x.room==null?'':x.room).slice(0,8),status:(typeof x.status==='string'&&SK.hasOwnProperty(x.status))?x.status:'wait',
+      createdAt:+x.createdAt||0,updatedAt:+x.updatedAt||0};
+  }
+  function sorted(){
+    return cases.slice().sort(function(a,b){
+      return ((a.status==='done')-(b.status==='done'))||(a.createdAt-b.createdAt)||a.num.localeCompare(b.num,'en',{numeric:true});
+    });
+  }
+  function timeAgo(ms){
+    if(!ms)return '';
+    var m=Math.floor((Date.now()-ms)/60000);
+    if(m<1)return 'Just now';
+    if(m<60)return m+' min ago';
+    return Math.floor(m/60)+' h ago';
+  }
+  function connInfo(en){
+    if(conn==='ok')return ['ok',en?'Connected':'متصل'];
+    if(conn==='load'||conn==='cache')return ['warn',en?'Updating…':'جارٍ التحديث…'];
+    if(conn==='slow')return ['warn',en?'Cannot reach data':'يتعذر الوصول للبيانات'];
+    if(conn==='error')return ['bad',en?'Connection lost':'انقطع الاتصال'];
+    return ['bad',en?'Not connected':'غير متصل بقاعدة البيانات'];
+  }
+  function paintConn(el,lang){
+    var c=connInfo(lang==='en');
+    el.className='conn '+c[0];
+    el.innerHTML='<i class="dot"></i>'+c[1];
+  }
+
+  /* ---------- شاشة العرض ---------- */
+  function renderDisplay(){
+    $('dTitle').textContent=settings.title||DEF.title;
+    var now=Date.now();
+    var list=sorted().filter(function(c){return c.status!=='done'||now-c.updatedAt<DONE_MS;});
+    var b=$('board'),top=b.scrollTop;
+    if(!list.length){
+      var msg=(conn==='none')
+        ?['تعذر عرض الحالات','سجّل الدخول بحساب لديه صلاحية العرض ثم أعد فتح الصفحة.']
+        :['لا توجد حالات معروضة حالياً','ستظهر أرقام المرضى هنا فور إدخالها من مشرف الوردية.'];
+      b.innerHTML='<div class="empty"><strong>'+msg[0]+'</strong><span>'+msg[1]+'</span></div>';
+    }else{
+      b.innerHTML=list.map(function(c){
+        var i=SK[c.status],s=STATUS[i];
+        var steps='';for(var n=0;n<5;n++)steps+='<i'+(n<=i?' class="on"':'')+'></i>';
+        var fl=(flashUntil[c.id]||0)>now?' flash':'';
+        return '<article class="card st-'+c.status+fl+'">'+
+          '<div class="c-top"><span>رقم المريض</span>'+(c.room?'<span class="room">غرفة '+esc(c.room)+'</span>':'')+'</div>'+
+          '<div class="c-num"><bdi>'+esc(c.num)+'</bdi></div>'+
+          '<div class="c-doc"><small>الطبيب</small>'+esc(c.doctor)+'</div>'+
+          '<div class="c-status"><i class="dot"></i>'+s.label+'</div>'+
+          '<div class="steps" aria-hidden="true">'+steps+'</div></article>';
+      }).join('');
+    }
+    b.scrollTop=top;
+    var n=$('dNotice');n.textContent=settings.note||'';
+    paintConn($('dConn'));
+    updatePager();
+  }
+  function updatePager(){
+    var b=$('board'),el=$('dPager');
+    if(!b||b.clientHeight<=0||b.scrollHeight<=b.clientHeight+4){el.textContent='';return;}
+    var step=Math.max(1,b.clientHeight-24);
+    var pages=Math.ceil((b.scrollHeight-b.clientHeight)/step)+1;
+    var page=Math.min(pages,Math.round(b.scrollTop/step)+1);
+    el.textContent='صفحة '+page+' من '+pages;
+  }
+  function autoScroll(){
+    if(view!=='display')return;
+    var b=$('board');
+    if(b.scrollHeight<=b.clientHeight+4){b.scrollTop=0;updatePager();return;}
+    var reduce=window.matchMedia&&matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if(b.scrollTop+b.clientHeight>=b.scrollHeight-4)b.scrollTo({top:0,behavior:reduce?'auto':'smooth'});
+    else b.scrollBy({top:b.clientHeight-24,behavior:reduce?'auto':'smooth'});
+    setTimeout(updatePager,900);
+  }
+  function tickClock(){
+    var d=new Date(),t,dt;
+    try{
+      t=d.toLocaleTimeString('ar-SA-u-nu-latn',{hour:'numeric',minute:'2-digit'});
+      dt=d.toLocaleDateString('ar-SA-u-ca-gregory-nu-latn',{weekday:'long',day:'numeric',month:'long'});
+    }catch(e){t=d.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});dt=d.toLocaleDateString();}
+    $('dTime').textContent=t;$('dDate').textContent=dt;
+  }
+  async function wake(){
+    try{
+      if(navigator.wakeLock&&document.visibilityState==='visible'&&!lock){
+        lock=await navigator.wakeLock.request('screen');
+        lock.addEventListener('release',function(){lock=null;});
+      }
+    }catch(e){}
+  }
+
+  /* ---------- لوحة المشرف ---------- */
+  function moreHtml(c){
+    var id=esc(c.id),b=busy[c.id]?' disabled':'',armed=confirmKey===c.id;
+    var chips=STATUS.map(function(x){
+      return '<button type="button" class="chip st-'+x.k+'" data-act="set" data-st="'+x.k+'" aria-pressed="'+(x.k===c.status)+'"'+b+'>'+x.enShort+'</button>';
+    }).join('');
+    return '<div class="more">'+
+      '<div class="chips" role="group" aria-label="Change status">'+chips+'</div>'+
+      '<div class="grid2"><div><label for="en-'+id+'">Patient number</label><input id="en-'+id+'" data-f="num" inputmode="numeric" maxlength="12" autocomplete="off" value="'+esc(c.num)+'"></div>'+
+      '<div><label for="er-'+id+'">Room</label><input id="er-'+id+'" data-f="room" maxlength="8" autocomplete="off" value="'+esc(c.room)+'"></div></div>'+
+      '<div><label for="ed-'+id+'">Doctor name</label><input id="ed-'+id+'" data-f="doctor" dir="auto" list="docList" maxlength="60" autocomplete="off" value="'+esc(c.doctor)+'"></div>'+
+      '<p class="err" role="alert" data-err></p>'+
+      '<div class="case-actions"><button type="button" class="btn primary" data-act="save"'+b+'>Save changes</button>'+
+      '<button type="button" class="btn danger'+(armed?' armed':'')+'" data-act="remove"'+b+'>'+(armed?'Tap to confirm':'Remove from screen')+'</button></div></div>';
+  }
+  function caseHtml(c){
+    var s=STATUS[SK[c.status]],nxt=STATUS[SK[c.status]+1];
+    var open=openId===c.id,b=busy[c.id]?' disabled':'',edit=canEdit!==false;
+    var acts='';
+    if(edit){
+      acts='<div class="case-actions">'+(nxt?'<button type="button" class="btn primary" data-act="next"'+b+'>Next → '+nxt.en+'</button>':'')+
+        '<button type="button" class="btn" data-act="more" aria-expanded="'+open+'">'+(open?'Close':'Edit')+'</button></div>';
+    }
+    return '<article class="case st-'+c.status+'" data-id="'+esc(c.id)+'">'+
+      '<div class="case-main"><div class="case-num"><bdi>'+esc(c.num)+'</bdi></div>'+
+      '<div class="case-meta"><div class="case-doc" dir="auto">'+esc(c.doctor)+'</div><div class="case-sub">'+(c.room?'Room '+esc(c.room)+' · ':'')+timeAgo(c.updatedAt)+'</div></div>'+
+      '<span class="pill"><i class="dot"></i>'+s.en+'</span></div>'+acts+(edit&&open?moreHtml(c):'')+'</article>';
+  }
+  function renderControl(){
+    paintConn($('cConn'),'en');
+    var nt=$('ctlNotice'),msg='';
+    if(conn==='none')msg='Cannot reach the database. Sign in to your account, then reopen the page.';
+    else if(canEdit===false)msg='Your account can view only. Ask the page owner to give you Editor access to change cases.';
+    nt.hidden=!msg;nt.textContent=msg;
+    var ro=(canEdit===false)||conn==='none';
+    $('addSet').disabled=ro;$('setSet').disabled=ro;
+    // قائمة الأطباء
+    var names={},arr=[];
+    (settings.doctors||[]).concat(cases.map(function(c){return c.doctor;})).forEach(function(n){
+      n=String(n||'').trim();if(n&&!names[n.toLowerCase()]){names[n.toLowerCase()]=1;arr.push(n);}
+    });
+    $('docList').innerHTML=arr.map(function(n){return '<option value="'+esc(n)+'"></option>';}).join('');
+    var ae=document.activeElement;
+    if(ae&&ae.tagName==='INPUT'&&$('list').contains(ae)){pendingRender=true;return;}
+    pendingRender=false;
+    var list=sorted();
+    $('cnt').textContent=list.length?'('+list.length+')':'';
+    var nd=list.filter(function(c){return c.status==='done';}).length;
+    var cd=$('clearDone');cd.hidden=!nd||ro;
+    cd.className='btn danger'+(confirmKey==='__done'?' armed':'');
+    cd.textContent=confirmKey==='__done'?'Tap to confirm':'Clear completed ('+nd+')';
+    if(!loaded){$('list').innerHTML='<div class="state">'+(conn==='none'?'No data.':'Loading…')+'</div>';return;}
+    $('list').innerHTML=list.length?list.map(caseHtml).join(''):'<div class="state">No cases yet. Add the first one using the form above.</div>';
+  }
+  function syncSettingsInputs(){
+    var a=document.activeElement;
+    if(a!==$('sTitle'))$('sTitle').value=settings.title||'';
+    if(a!==$('sNote'))$('sNote').value=settings.note||'';
+  }
+
+  function toast(msg,bad){
+    var t=$('toast');t.textContent=msg;t.className=bad?'bad':'';t.hidden=false;
+    clearTimeout(toastTimer);toastTimer=setTimeout(function(){t.hidden=true;},3500);
+  }
+  function errMsg(e){
+    var c=e&&e.code;
+    if(c==='invalid_argument')return 'Could not save. Check that you have Editor access and that the case still exists.';
+    if(c==='quota_exceeded')return 'Storage is full. Clear completed cases and try again.';
+    if(c==='revoked')return 'Access expired. Reopen the page.';
+    return 'Could not save. Check your connection and try again.';
+  }
+  async function run(fn,okMsg){
+    if(!db){toast('No database connection.',true);return false;}
+    try{await fn();if(okMsg)toast(okMsg);return true;}
+    catch(e){
+      if(e&&e.code==='unavailable'){
+        try{await sleep(600+Math.random()*500);await fn();if(okMsg)toast(okMsg);return true;}catch(e2){e=e2;}
+      }
+      toast(errMsg(e),true);return false;
+    }
+  }
+  function armConfirm(key){
+    confirmKey=key;clearTimeout(confirmTimer);
+    confirmTimer=setTimeout(function(){confirmKey=null;if(view==='control')renderControl();},4000);
+    renderControl();
+  }
+  async function ensureDoctor(name){
+    name=name.trim();if(!name)return;
+    var has=(settings.doctors||[]).some(function(n){return String(n).toLowerCase()===name.toLowerCase();});
+    if(has)return;
+    var docs=(settings.doctors||[]).concat([name]).slice(-80);
+    await run(function(){return db.doc('settings/main').set({title:settings.title||DEF.title,note:settings.note||'',doctors:docs});});
+  }
+  function dupNum(num,exceptId){
+    return cases.some(function(c){return c.id!==exceptId&&c.num===num&&c.status!=='done';});
+  }
+
+  $('addForm').addEventListener('submit',async function(e){
+    e.preventDefault();
+    if(adding)return;
+    var num=$('fNum').value.trim(),doc=$('fDoc').value.trim(),room=$('fRoom').value.trim(),st=$('fStatus').value;
+    var err=$('fErr');err.textContent='';
+    if(!num){err.textContent='Enter the patient number.';$('fNum').focus();return;}
+    if(!doc){err.textContent='Enter the doctor name.';$('fDoc').focus();return;}
+    if(dupNum(num,null)){err.textContent='This number is already in the current list.';$('fNum').focus();return;}
+    adding=true;$('addBtn').disabled=true;
+    var now=Date.now(),ref=db?db.collection('cases').doc():null;
+    var ok=await run(function(){return ref.set({num:num,doctor:doc,room:room,status:st,createdAt:now,updatedAt:now});},'Case '+num+' added');
+    adding=false;$('addBtn').disabled=false;
+    if(ok){$('fNum').value='';$('fRoom').value='';$('fNum').focus();ensureDoctor(doc);}
+  });
+
+  async function setStatus(c,st){
+    if(busy[c.id])return;
+    busy[c.id]=1;renderControl();
+    var label=STATUS[SK[st]].en;
+    var ok=await run(function(){return db.collection('cases').doc(c.id).update({status:st,updatedAt:Date.now()});},c.num+' → '+label);
+    delete busy[c.id];renderControl();
+  }
+  $('list').addEventListener('click',async function(e){
+    var btn=e.target.closest('button[data-act]');if(!btn)return;
+    var card=btn.closest('.case');if(!card)return;
+    var id=card.dataset.id,c=cases.filter(function(x){return x.id===id;})[0];if(!c)return;
+    var act=btn.dataset.act;
+    if(act==='more'){
+      openId=(openId===id)?null:id;confirmKey=null;renderControl();
+      var again=$('list').querySelector('[data-id="'+(window.CSS&&CSS.escape?CSS.escape(id):id)+'"] [data-act="more"]');
+      if(again)again.focus();
+      return;
+    }
+    if(act==='next'){var nx=STATUS[SK[c.status]+1];if(nx)setStatus(c,nx.k);return;}
+    if(act==='set'){if(btn.dataset.st!==c.status)setStatus(c,btn.dataset.st);return;}
+    if(act==='save'){
+      if(busy[id])return;
+      var num=card.querySelector('[data-f="num"]').value.trim(),room=card.querySelector('[data-f="room"]').value.trim(),doc=card.querySelector('[data-f="doctor"]').value.trim();
+      var er=card.querySelector('[data-err]');er.textContent='';
+      if(!num||!doc){er.textContent='Patient number and doctor name are required.';return;}
+      if(dupNum(num,id)){er.textContent='This number is used by another case.';return;}
+      busy[id]=1;renderControl();
+      var ok=await run(function(){return db.collection('cases').doc(id).update({num:num,doctor:doc,room:room});},'Changes saved');
+      delete busy[id];if(ok){openId=null;ensureDoctor(doc);}renderControl();
+      return;
+    }
+    if(act==='remove'){
+      if(confirmKey!==id){armConfirm(id);return;}
+      confirmKey=null;busy[id]=1;renderControl();
+      var ok2=await run(function(){return db.collection('cases').doc(id).delete();},'Case removed from the screen');
+      delete busy[id];if(ok2&&openId===id)openId=null;renderControl();
+    }
+  });
+  $('list').addEventListener('focusout',function(){
+    setTimeout(function(){
+      var ae=document.activeElement;
+      if(pendingRender&&!(ae&&ae.tagName==='INPUT'&&$('list').contains(ae)))renderControl();
+    },0);
+  });
+  $('clearDone').addEventListener('click',async function(){
+    if(confirmKey!=='__done'){armConfirm('__done');return;}
+    confirmKey=null;renderControl();
+    var done=cases.filter(function(c){return c.status==='done';});
+    for(var i=0;i<done.length;i++){
+      var id=done[i].id;
+      var ok=await run(function(){return db.collection('cases').doc(id).delete();});
+      if(!ok)return;
+    }
+    toast('Completed cases cleared');
+  });
+  $('setForm').addEventListener('submit',async function(e){
+    e.preventDefault();
+    var title=$('sTitle').value.trim().slice(0,60)||DEF.title,note=$('sNote').value.trim().slice(0,160);
+    await run(function(){return db.doc('settings/main').set({title:title,note:note,doctors:settings.doctors||[]});},'Screen settings saved');
+  });
+  $('fsBtn').addEventListener('click',function(){
+    try{
+      if(document.fullscreenElement){document.exitFullscreen();}
+      else if(document.documentElement.requestFullscreen){document.documentElement.requestFullscreen().catch(function(){toast('تعذر تفعيل ملء الشاشة في هذا العرض.',true);});}
+    }catch(e){}
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-home]'),function(a){
+    a.addEventListener('click',function(){try{localStorage.removeItem('opsView');}catch(e){}});
+  });
+
+  /* ---------- التوجيه ---------- */
+  function render(){
+    if(view==='display')renderDisplay();
+    else if(view==='control')renderControl();
+  }
+  function route(){
+    var h=location.hash.slice(1);
+    view=(h==='display'||h==='control')?h:'home';
+    document.documentElement.classList.toggle('on-display',view==='display');
+    ['home','display','control'].forEach(function(v){$(v).hidden=(v!==view);});
+    try{if(view!=='home')localStorage.setItem('opsView',view);}catch(e){}
+    if(view==='display'){wake();tickClock();}
+    render();
+    window.scrollTo(0,0);
+  }
+  window.addEventListener('hashchange',route);
+  document.addEventListener('visibilitychange',function(){if(view==='display')wake();});
+
+  /* ---------- البيانات ---------- */
+  async function boot(){
+    $('fStatus').innerHTML=STATUS.slice(0,4).map(function(s){return '<option value="'+s.k+'">'+s.en+'</option>';}).join('');
+    $('dLegend').innerHTML=STATUS.map(function(s){return '<span class="st-'+s.k+'"><i class="dot"></i>'+s.label+'</span>';}).join('');
+    if(!location.hash){
+      var st=null;try{st=localStorage.getItem('opsView');}catch(e){}
+      if(st==='display'||st==='control')location.hash=st;
+    }
+    route();
+    var c=window.claude;
+    try{
+      if(c&&c.use){
+        var r=await Promise.all([c.use('db'),c.use('user')]);
+        db=r[0];canEdit=r[1]?!!r[1].canEdit():null;
+      }
+    }catch(e){db=null;}
+    if(!db){conn='none';render();return;}
+    conn='cache';
+    loadTimer=setTimeout(function(){if(conn!=='ok'){conn='slow';render();}},10000);
+    db.collection('cases').onSnapshot(function(snap){
+      var next=snap.docs.map(norm);
+      if(primed){next.forEach(function(c){if(seen[c.id]&&seen[c.id]!==c.status)flashUntil[c.id]=Date.now()+5000;});}
+      seen={};next.forEach(function(c){seen[c.id]=c.status;});
+      primed=true;cases=next;loaded=true;
+      conn=snap.metadata.fromCache?'cache':'ok';
+      if(!snap.metadata.fromCache)clearTimeout(loadTimer);
+      render();
+    },function(){conn='error';render();});
+    db.doc('settings/main').onSnapshot(function(s){
+      var x=s.exists?(s.data()||{}):{};
+      settings={title:String(x.title||DEF.title).slice(0,60),note:String(x.note||'').slice(0,160),
+        doctors:Array.isArray(x.doctors)?x.doctors.map(String).slice(0,80):[]};
+      syncSettingsInputs();render();
+    },function(){});
+  }
+  setInterval(tickClock,15000);
+  setInterval(autoScroll,9000);
+  setInterval(function(){if(view==='display'||view==='control')render();},60000);
+  boot();
+})();
+</script>
+
+</body></html>
